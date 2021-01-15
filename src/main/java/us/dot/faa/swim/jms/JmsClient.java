@@ -45,7 +45,15 @@ public class JmsClient {
 		}
 	}
 
-	public void connect(final String connectionFactoryName, ExceptionListener exceptionListener) throws NamingException, JMSException {
+	public void connect(final String connectionFactoryName)
+			throws NamingException, JMSException {
+		this.connectionFactory = (ConnectionFactory) this.initialcontext.lookup(connectionFactoryName);
+		this.connection = this.connectionFactory.createConnection();
+		this.connection.start();
+	}
+	
+	public void connect(final String connectionFactoryName, ExceptionListener exceptionListener)
+			throws NamingException, JMSException {
 		this.connectionFactory = (ConnectionFactory) this.initialcontext.lookup(connectionFactoryName);
 		this.connection = this.connectionFactory.createConnection();
 		this.connection.setExceptionListener(exceptionListener);
@@ -56,13 +64,20 @@ public class JmsClient {
 		this.initialcontext.close();
 	}
 
-	public MessageConsumer createConsumer(String destinationName, MessageListener messageListener, int ackMode)
-			throws Exception {
+	public MessageConsumer createConsumer(String destinationName, int ackMode) throws Exception {
 
 		Destination destination = (Destination) this.initialcontext.lookup(destinationName);
 		Session session = this.connection.createSession(false, ackMode);
 		MessageConsumer messageConsumer = session.createConsumer(destination);
+		return messageConsumer;
+	}
+
+	public MessageConsumer createConsumer(String destinationName, MessageListener messageListener, int ackMode)
+			throws Exception {
+
+		MessageConsumer messageConsumer = createConsumer(destinationName, ackMode);
 		messageConsumer.setMessageListener(messageListener);
 		return messageConsumer;
 	}
+
 }
