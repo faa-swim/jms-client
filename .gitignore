@@ -1,4 +1,6 @@
 /target/
-.project
-.settings
-.classpath
+*/bin/*
+*/.git/*
+*/.settings/*
+*/.classpath
+*/.project
