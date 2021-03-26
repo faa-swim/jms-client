@@ -87,12 +87,13 @@ public class JmsMessageProcessor {
 				executor.execute(new Runnable() {
 					@Override
 					public void run() {
-						jmsMessageWorker.processesMessage(jmsMessage);
-						processedMessagesMeter.mark();
-						try {
-							jmsMessage.acknowledge();
-						} catch (JMSException e) {
-							throw new RuntimeException(e);
+						if(jmsMessageWorker.processesMessage(jmsMessage)){
+							processedMessagesMeter.mark();
+							try {
+								jmsMessage.acknowledge();
+							} catch (JMSException e) {
+								throw new RuntimeException(e);
+							}
 						}
 					}
 				});
