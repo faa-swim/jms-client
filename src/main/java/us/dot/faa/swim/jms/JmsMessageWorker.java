@@ -4,5 +4,5 @@ import javax.jms.Message;
 
 public interface JmsMessageWorker {
 	
-	public void processesMessage(Message message);	
+	public boolean processesMessage(Message message);	
 }
