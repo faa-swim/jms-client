@@ -15,18 +15,19 @@ import java.util.concurrent.locks.ReentrantLock;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
+import javax.jms.MessageListener;
 
 import com.codahale.metrics.Meter;
 
-public class JmsMessageProcessor {
+public class JmsMessageProcessor implements MessageListener {
 	int processingThreadCount;
-	Thread processorThread;
 	ThreadPoolExecutor executor;
 	int processingQueueSize = 100;
 	int consumptionYieldTimeInSeconds = 1;
 	Instant suspendConsumptionUntil = Instant.now();
 	Meter consumedMessagesMeter = new Meter();
 	Meter processedMessagesMeter = new Meter();
+	List<MessageConsumer> consumers;
 	JmsMessageWorker jmsMessageWorker;
 	boolean running = false;
 
@@ -52,55 +53,19 @@ public class JmsMessageProcessor {
 		this.jmsMessageWorker = worker;
 		this.processingQueueSize = processingQueueSize;
 		this.processingThreadCount = processingThreadCount;
-
-		processorThread = new Thread() {
-
-			@Override
-			public void run() {
-				this.setName("JmsMessageProcessor-Thread");
-				try {
-
-					while (running) {
-						consumers.parallelStream().forEach(c -> {
-							consumeMessage(c);
-						});
-					}
-
-					latch.await();
-				} catch (InterruptedException e) {
-					executor.shutdown();
-					try {
-						executor.awaitTermination(10, TimeUnit.SECONDS);
-					} catch (InterruptedException e1) {
-						throw new RuntimeException(e1);
-					}
-					throw new RuntimeException(e);
-				}
-			}
-		};
+		this.consumers = consumers;
 	}
 
-	private void consumeMessage(MessageConsumer consumer) {
-		try {
-			Message jmsMessage = consumer.receive(1000);
-			if (jmsMessage != null) {
-				executor.execute(new Runnable() {
-					@Override
-					public void run() {
-						if(jmsMessageWorker.processesMessage(jmsMessage)){
-							processedMessagesMeter.mark();
-							try {
-								jmsMessage.acknowledge();
-							} catch (JMSException e) {
-								throw new RuntimeException(e);
-							}
-						}
-					}
-				});
-			}
+	public void onMessage(Message message) {
+		if (message != null) {
+			executor.execute(new Runnable() {
+				@Override
+				public void run() {
+					jmsMessageWorker.processesMessage(message);
+					processedMessagesMeter.mark();													
+				}
+			});
 			consumedMessagesMeter.mark();
-		} catch (JMSException e) {
-			throw new RuntimeException(e);
 		}
 	}
 
@@ -133,18 +98,33 @@ public class JmsMessageProcessor {
 		return this.executor.getQueue().size();
 	}
 
-	public void start() {
+	public void start() throws JMSException {
 
 		this.running = true;
 		executor = new ThreadPoolExecutor(processingThreadCount, processingThreadCount, 0L, TimeUnit.MILLISECONDS,
 				new LinkedBlockingQueue<Runnable>(processingQueueSize), new RunInCallingThreadOrThrow());
-		processorThread.start();
+
+		for (MessageConsumer messageConsumer : this.consumers) {
+			try {
+				messageConsumer.setMessageListener(this);
+			} catch (Exception e) {
+				throw e;
+			}			
+		}
 	}
 
 	public void stop() throws Exception {
 		this.running = false;
 		executor.shutdown();
 		executor.awaitTermination(10, TimeUnit.SECONDS);
+
+		for (MessageConsumer messageConsumer : this.consumers) {
+			try {
+				messageConsumer.setMessageListener(null);
+			} catch (Exception e) {
+				throw e;
+			}			
+		}		
 	}
 
 	class RunInCallingThreadOrThrow implements RejectedExecutionHandler {
