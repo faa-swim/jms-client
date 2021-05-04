@@ -96,11 +96,11 @@ JMS Message Processor provides a high performance processor that takes one or mo
 	ArrayList<MessageConsumer> consumers = new ArrayList<MessageConsumer>();
 	
 	for(int i=0; i < concurrentConsumerCount; i++) {
-	MessageConsumer consumer = jmsClient.createConsumer(jmsDestination, Session.CLIENT_ACKNOWLEDGE);
+	MessageConsumer consumer = jmsClient.createConsumer(jmsDestination);
 		consumers.add(consumer);
 	}
 
-	JmsMessageProcessor processor = new JmsMessageProcessor(consumers, parellelProcessorCount, processingQueueSize, this);
+	JmsMessageProcessor processor = new JmsMessageProcessor(consumers, parallelProcessorCount, processingQueueSize, this);
 	
 	processor.start();
 	
