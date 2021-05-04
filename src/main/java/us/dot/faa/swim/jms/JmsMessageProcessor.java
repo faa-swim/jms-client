@@ -114,9 +114,6 @@ public class JmsMessageProcessor implements MessageListener {
 	}
 
 	public void stop() throws Exception {
-		this.running = false;
-		executor.shutdown();
-		executor.awaitTermination(10, TimeUnit.SECONDS);
 
 		for (MessageConsumer messageConsumer : this.consumers) {
 			try {
@@ -124,7 +121,11 @@ public class JmsMessageProcessor implements MessageListener {
 			} catch (Exception e) {
 				throw e;
 			}			
-		}		
+		}
+
+		this.running = false;
+		executor.shutdown();
+		executor.awaitTermination(10, TimeUnit.SECONDS);				
 	}
 
 	class RunInCallingThreadOrThrow implements RejectedExecutionHandler {
