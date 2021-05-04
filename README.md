@@ -85,7 +85,7 @@ Consuming using an Synchronous Message Consumer
 
 ## JMS Message Processor
 
-JMS Message Processor provides a high performance processor that takes one or more MessageConsumers, consumes messages, and queues for single threaded or parallel processing.  If consumption rate is faster than processing rate, resulting in processing queue reaching max capacity, consumption will be stopped until processing threads are available. This allows for cases of either inbound message bursts or a delay in processing (e.g. writing to a database). If consumption yielding happens often, increase the parallel processor count and/or the processing queue size accordingly. If consumption rate is insufficient, increase the concurrent consumer count accordingly. Processing logic is controlled via the JmsMessageWorker interface processessMessage method.
+JMS Message Processor provides a high performance processor that takes one or more MessageConsumers, consumes messages, and queues for single threaded or parallel processing.  If consumption rate is faster than processing rate, resulting in processing queue reaching max capacity, consumption will be stopped until processing threads are available. This allows for cases of either inbound message bursts or a delay in processing (e.g. writing to a database). If consumption yielding happens often, increase the parallel processor count and/or the processing queue size accordingly. If consumption rate is insufficient, increase the concurrent consumer count accordingly. Processing logic is controlled via the MessageListener interface onMessage method.
 
 ```java
 
@@ -113,7 +113,7 @@ JMS Message Processor provides a high performance processor that takes one or mo
 
 ```java
 
-	public void processesMessage(Message jmsMessage) {
+	public void onMessage(Message jmsMessage) {
 		try {					
 			//assuming message is of type text message
 			System.out.println(((TextMessage)jmsMessage).getText());
