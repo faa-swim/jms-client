@@ -28,29 +28,29 @@ public class JmsMessageProcessor implements MessageListener {
 	Meter consumedMessagesMeter = new Meter();
 	Meter processedMessagesMeter = new Meter();
 	List<MessageConsumer> consumers;
-	JmsMessageWorker jmsMessageWorker;
+	MessageListener messageListener;
 	boolean running = false;
 
 	final CountDownLatch latch = new CountDownLatch(1);
 
 	public JmsMessageProcessor(MessageConsumer consumer, int processingThreadCount, int processingQueueSize,
-			JmsMessageWorker worker) throws JMSException {
+			MessageListener messageListener) throws JMSException {
 
 		final List<MessageConsumer> consumerList = new ArrayList<MessageConsumer>();
 		consumerList.add(consumer);
-		initialize(consumerList, processingThreadCount, processingQueueSize, worker);
+		initialize(consumerList, processingThreadCount, processingQueueSize, messageListener);
 	}
 
 	public JmsMessageProcessor(List<MessageConsumer> consumers, int processingThreadCount, int processingQueueSize,
-			JmsMessageWorker worker) throws Exception {
+			MessageListener messageListener) throws Exception {
 
-		initialize(consumers, processingThreadCount, processingQueueSize, worker);
+		initialize(consumers, processingThreadCount, processingQueueSize, messageListener);
 	}
 
 	private void initialize(List<MessageConsumer> consumers, int processingThreadCount, int processingQueueSize,
-			JmsMessageWorker worker) throws JMSException {
+			MessageListener messageListener) throws JMSException {
 
-		this.jmsMessageWorker = worker;
+		this.messageListener = messageListener;
 		this.processingQueueSize = processingQueueSize;
 		this.processingThreadCount = processingThreadCount;
 		this.consumers = consumers;
@@ -61,8 +61,8 @@ public class JmsMessageProcessor implements MessageListener {
 			executor.execute(new Runnable() {
 				@Override
 				public void run() {
-					jmsMessageWorker.processesMessage(message);
-					processedMessagesMeter.mark();													
+					messageListener.onMessage(message);
+					processedMessagesMeter.mark();
 				}
 			});
 			consumedMessagesMeter.mark();
@@ -109,7 +109,7 @@ public class JmsMessageProcessor implements MessageListener {
 				messageConsumer.setMessageListener(this);
 			} catch (Exception e) {
 				throw e;
-			}			
+			}
 		}
 	}
 
@@ -120,12 +120,12 @@ public class JmsMessageProcessor implements MessageListener {
 				messageConsumer.setMessageListener(null);
 			} catch (Exception e) {
 				throw e;
-			}			
+			}
 		}
 
 		this.running = false;
 		executor.shutdown();
-		executor.awaitTermination(10, TimeUnit.SECONDS);				
+		executor.awaitTermination(10, TimeUnit.SECONDS);
 	}
 
 	class RunInCallingThreadOrThrow implements RejectedExecutionHandler {
@@ -141,7 +141,6 @@ public class JmsMessageProcessor implements MessageListener {
 				} else {
 					throw new RuntimeException(new Exception("Executor Shutdown"));
 				}
-				executor.setMaximumPoolSize(executor.getMaximumPoolSize() + 1);
 			} finally
 
 			{
